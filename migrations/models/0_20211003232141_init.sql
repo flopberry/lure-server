@@ -1,0 +1,80 @@
+-- upgrade --
+CREATE TABLE IF NOT EXISTS "rungroup" (
+    "id" SERIAL NOT NULL PRIMARY KEY,
+    "created_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "modified_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMPTZ,
+    "name" VARCHAR(64) NOT NULL UNIQUE,
+    CONSTRAINT "uid_rungroup_name_05c9eb" UNIQUE ("name", "deleted_at")
+);
+CREATE TABLE IF NOT EXISTS "run" (
+    "id" SERIAL NOT NULL PRIMARY KEY,
+    "created_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "modified_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMPTZ,
+    "name" VARCHAR(64) NOT NULL,
+    "group_id" INT REFERENCES "rungroup" ("id") ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS "testsuitegroup" (
+    "id" SERIAL NOT NULL PRIMARY KEY,
+    "created_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "modified_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMPTZ,
+    "name" VARCHAR(64) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "testsuite" (
+    "id" SERIAL NOT NULL PRIMARY KEY,
+    "created_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "modified_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMPTZ,
+    "name" VARCHAR(64) NOT NULL,
+    "group_id" INT REFERENCES "testsuitegroup" ("id") ON DELETE CASCADE,
+    "run_id" INT NOT NULL REFERENCES "run" ("id") ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS "test" (
+    "id" SERIAL NOT NULL PRIMARY KEY,
+    "created_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "modified_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMPTZ,
+    "name" VARCHAR(256) NOT NULL,
+    "test_suite_id" INT NOT NULL REFERENCES "testsuite" ("id") ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS "case" (
+    "id" SERIAL NOT NULL PRIMARY KEY,
+    "created_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "modified_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMPTZ,
+    "name" VARCHAR(128) NOT NULL,
+    "status" SMALLINT NOT NULL  DEFAULT 6,
+    "test_id" INT NOT NULL REFERENCES "test" ("id") ON DELETE CASCADE
+);
+COMMENT ON COLUMN "case"."status" IS 'passed: 1\nfailed: 2\nerror: 3\nskipped: 4\nprogress: 5\npending: 6';
+CREATE TABLE IF NOT EXISTS "report" (
+    "id" SERIAL NOT NULL PRIMARY KEY,
+    "created_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "modified_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMPTZ,
+    "name" VARCHAR(32),
+    "type" SMALLINT NOT NULL  DEFAULT 0,
+    "case_id" INT NOT NULL REFERENCES "case" ("id") ON DELETE CASCADE
+);
+COMMENT ON COLUMN "report"."type" IS 'system: 0\nsetup: 1\ncall: 2\nteardown: 3';
+CREATE TABLE IF NOT EXISTS "user" (
+    "id" SERIAL NOT NULL PRIMARY KEY,
+    "created_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "modified_at" TIMESTAMPTZ NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMPTZ,
+    "role" SMALLINT NOT NULL  DEFAULT 1,
+    "login" VARCHAR(32) NOT NULL UNIQUE,
+    "password_hash" VARCHAR(64) NOT NULL,
+    "salt" VARCHAR(32) NOT NULL  DEFAULT '',
+    "token" VARCHAR(32) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS "idx_user_login_a18ea9" ON "user" ("login");
+COMMENT ON COLUMN "user"."role" IS 'viewer: 1\neditor: 2\nowner: 3\nadmin: 4';
+CREATE TABLE IF NOT EXISTS "aerich" (
+    "id" SERIAL NOT NULL PRIMARY KEY,
+    "version" VARCHAR(255) NOT NULL,
+    "app" VARCHAR(20) NOT NULL,
+    "content" JSONB NOT NULL
+);
